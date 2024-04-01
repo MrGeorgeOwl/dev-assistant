@@ -1,13 +1,29 @@
+#! env/bin/python3
+
 import json
+import argparse
 
 import requests
 
 MODEL = "codellama"
 
-def main():
+def _define_argparser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "-p",
+        "--prompt",
+        dest="prompt",
+        required=True,
+        help="prompt to be used for ollama model",
+    )
+    
+    return parser
+
+def main(args):
     data = {
         "model": "codellama",
-        "prompt": "Write me a function that writes a fibonacci sequence in Elixir",
+        "prompt": args.prompt,
     }    
     response = requests.post("http://localhost:11434/api/generate", json=data)
     jsons = response.text.split("\n")
@@ -15,4 +31,6 @@ def main():
     print(jsons)
 
 if __name__ == '__main__':
-    main()
+    parser = _define_argparser()
+    args = parser.parse_args()
+    main(args)
