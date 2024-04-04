@@ -1,13 +1,12 @@
-run_model:
-	if [ -n $(docker ps -a | grep ollama) ]; then \
-	    echo "starting already created ollama model" && \
-	    docker start ollama;\
-	else \
-	    echo "There is no ollama yet, creating..." && \
-	    docker run -d -v ./ollama:/root/.ollama -p 11434:11434 --name ollama ollama/ollama;\
-	fi
+prepare: prepare_python_env run_model
+	@echo "Environment is ready to use CLI"
 
-prepare_env:
+run_model:
+	@docker start ollama || \
+		(docker run -d -v ./ollama:/root/.ollama -p 11434:11434 --name ollama ollama/ollama && \
+		docker exec -it ollama ollama pull codellama)
+
+prepare_python_env:
 	@if [ -d ./env ]; then \
 	    echo "environment exists"; \
 	else \
@@ -19,8 +18,8 @@ prepare_env:
 	    echo '\nUse "source env/bin/activate" command to use newly created environment'; \
 	fi; \
 
-format: prepare_env
+format: prepare_python_env
 	source ./env/bin/activate && ruff format .
 
-check: prepare_env
+check: prepare_python_env
 	source ./env/bin/activate && ruff check . --fix
