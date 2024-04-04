@@ -39,7 +39,10 @@ def _ask_ollama(prompt: str) -> requests.Response:
         "prompt": prompt,
         "stream": False,
     }
-    return requests.post("http://localhost:11434/api/generate", json=data)
+    response = requests.post("http://localhost:11434/api/generate", json=data)
+    if response.status_code != 200:
+        raise Exception("codellama responsed with error: %s", response.text)
+    return response
 
 
 def _process_ollama_response(response: requests.Response) -> list[str]:
