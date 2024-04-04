@@ -51,11 +51,24 @@ def _define_reviewer(subparsers):
     reviewer.set_defaults(func=review)
 
 
+def _define_asker(subparsers):
+    asker = subparsers.add_parser("ask", help="ask something codellama model.")
+    asker.add_argument(
+        "-p",
+        "--prompt",
+        dest="prompt",
+        required=True,
+        help="prompt to be used for ollama model",
+    )
+    asker.set_defaults(func=ask)
+
+
 def _define_argparser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(help="possible methods to use:")
     _define_generator(subparsers)
     _define_reviewer(subparsers)
+    _define_asker(subparsers)
 
     return parser
 
@@ -74,6 +87,13 @@ def review(args):
         code = "\n".join(f.readlines())
 
     response = _ask_ollama("\n".join((args.prompt, code)))
+    response_lines = _process_ollama_response(response)
+
+    _write_output("", response_lines)
+
+
+def ask(args):
+    response = _ask_ollama(args.prompt)
     response_lines = _process_ollama_response(response)
 
     _write_output("", response_lines)
