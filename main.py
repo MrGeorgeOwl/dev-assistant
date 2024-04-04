@@ -1,5 +1,6 @@
 #! env/bin/python3
 
+import os
 import json
 import argparse
 
@@ -9,7 +10,9 @@ MODEL = "codellama"
 
 
 def _define_generator(subparsers):
-    generator = subparsers.add_parser('generate', help='generating answer or file with a code.')
+    generator = subparsers.add_parser(
+        "generate", help="generating answer or file with a code."
+    )
     generator.add_argument(
         "-p",
         "--prompt",
@@ -28,7 +31,9 @@ def _define_generator(subparsers):
 
 
 def _define_reviewer(subparsers):
-    reviewer = subparsers.add_parser('review', help='reviewing code with codellama model.')
+    reviewer = subparsers.add_parser(
+        "review", help="reviewing code with codellama model."
+    )
     reviewer.add_argument(
         "-p",
         "--prompt",
@@ -37,10 +42,10 @@ def _define_reviewer(subparsers):
         help="prompt to be used for ollama model",
     )
     reviewer.add_argument(
-        "-c",
-        "--code_dest",
-        dest="code_dest",
-        help="destination to output file",
+        "-f",
+        "--file",
+        dest="file",
+        help="destination to file with code to review",
         default="",
     )
     reviewer.set_defaults(func=review)
@@ -51,8 +56,27 @@ def _define_argparser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(help="possible methods to use:")
     _define_generator(subparsers)
     _define_reviewer(subparsers)
-    
+
     return parser
+
+
+def generate(args):
+    response = _ask_ollama(args.prompt)
+    response_lines = _process_ollama_response(response)
+    _write_output(args.output, response_lines)
+
+
+def review(args):
+    if not os.path.exists(args.file):
+        raise ValueError("provided file with code should exist to review")
+
+    with open(args.file) as f:
+        code = "\n".join(f.readlines())
+
+    response = _ask_ollama("\n".join((args.prompt, code)))
+    response_lines = _process_ollama_response(response)
+
+    _write_output("", response_lines)
 
 
 def _ask_ollama(prompt: str) -> requests.Response:
@@ -60,7 +84,7 @@ def _ask_ollama(prompt: str) -> requests.Response:
         "model": MODEL,
         "prompt": prompt,
         "stream": False,
-    }    
+    }
     return requests.post("http://localhost:11434/api/generate", json=data)
 
 
@@ -78,24 +102,16 @@ def _write_output(output_dest: str, lines: list[str]) -> None:
         f.write(output)
 
 
-def generate(args):
-    response = _ask_ollama(args.prompt)
-
+def _process_ollama_response(response: requests.Response) -> list[str]:
     jsons = response.text.split("\n")
-    jsons = [json.loads(j)['response'] for j in jsons if j != ""]
-
-    _write_output(args.output, jsons)
-
-
-def review(args):
-    print("review")
+    return [json.loads(j)["response"] for j in jsons if j != ""]
 
 
 def main(args):
     args.func(args)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = _define_argparser()
     args = parser.parse_args()
     main(args)
